@@ -31,7 +31,6 @@ import puppeteer from 'puppeteer';
   }
     console.log(items);
 
-
     
 //   await browser.close();
 })();
