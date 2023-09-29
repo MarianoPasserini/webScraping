@@ -1,28 +1,34 @@
 import puppeteer from 'puppeteer';
 
 (async () => {
-  // Launch the browser and open a new blank page
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null,
     userDataDir: './user_data',
   });
-  const page = await browser.newPage();
-  await page.goto('https://compragamer.com/?seccion=3');
 
-  const acordionCategories = await page.$$('.noMobile > cgw-category-list > mat-accordion > mat-expansion-panel > div > div > mat-accordion > mat-expansion-panel');
-  console.log(acordionCategories.length)
+  const page = await browser.newPage();
+  await page.goto('https://compragamer.com/?seccion=3', { waitUntil: 'networkidle2' });
+
+  const itemHandlesTest = await page.$$('.addRow .ng-star-inserted > div');
+  console.log(itemHandlesTest.length);
+  const size = itemHandlesTest.length;
 
   let items = [];
-  for(const acordionCategory of acordionCategories) {
-    let item = null;
+
+  for(let i = 0; i < size; i++) {
     try {
-       item = await page.evaluate(el => el.querySelector(" mat-expansion-panel-header > span > mat-panel-title").textContent, acordionCategory);
-       items.push(item);
+      const itemHandles = await page.$$('.addRow .ng-star-inserted > div');
+      await page.evaluate(el => el.querySelector("div > div > div > a").click(), itemHandles[i]);
+      await page.waitForSelector('h1', { visible: true });
+      const title = await page.evaluate(el => el.querySelector("h1").textContent, await page.$('.product-details-container'));
+      console.log(page.url());
+      items.push({title: title, url: page.url()});
+      await page.goBack();
+      await page.waitForSelector('.addRow', { visible: true });
     } catch (e) {
       console.log(e);
     }
   }
-    console.log(items);
-//   await browser.close();
+  console.log(items);
 })();
