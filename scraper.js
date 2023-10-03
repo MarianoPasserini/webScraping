@@ -13,13 +13,13 @@ async function scrapeItem(page, itemHandle) {
     let price = null;
 
     try {
-        item = await itemHandle.$eval("div > div > div > a", el => el.textContent);
+        item = await itemHandle.$eval("div > div > div > a", el => el.textContent.trim());
     } catch (e) {
         console.log("Error getting item title:", e.message);
     }
 
     try {
-        price = await itemHandle.$eval(".contenedor-price > h1 > span", el => el.textContent);
+        price = await itemHandle.$eval(".contenedor-price > h1 > span", el => parseFloat(el.textContent.replace(/[^\d.-]/g, '')));
     } catch (e) {
         console.log("Error getting item price:", e.message);
     }
@@ -28,7 +28,7 @@ async function scrapeItem(page, itemHandle) {
 }
 
 // Function to scrape items on the current page
-async function scrapePageItems(page, category) {
+async function scrapePageItems(page) {
     const itemHandles = await page.$$('.addRow .ng-star-inserted > div');
     const items = [];
 
@@ -37,29 +37,34 @@ async function scrapePageItems(page, category) {
         items.push(scrapedItem);
     }
 
-    return { [category]: items }; // Use category as the main key
+    return items;
 }
 
 // Function to handle the entire scraping process for a given accordionCategory
 async function scrapeAccordionCategory(page, accordionCategory) {
-    const category = await page.evaluate(el => el.querySelector("mat-expansion-panel-header > span > mat-panel-title").textContent, accordionCategory);
+    const category = await page.evaluate(el => el.querySelector("mat-expansion-panel-header > span > mat-panel-title").textContent.trim(), accordionCategory);
 
-    const spanSize = await accordionCategory.$$eval("div > div > p > span", spans => spans.length);
+    const spanElements = await accordionCategory.$$('div > div > p > span');
 
-    for (let j = 0; j < spanSize; j++) {
+    const subcategories = [];
+
+    for (let j = 0; j < spanElements.length; j++) {
         await clickSpan(page, accordionCategory, j);
 
         // Wait for the .addRow selector to be visible
         await page.waitForSelector('.addRow', { visible: true });
 
-        const items = await scrapePageItems(page, category);
+        const subcategory = await page.evaluate(el => el.textContent.trim(), spanElements[j]);
 
-        console.log(items);
-        console.log(page.url());
+        const items = await scrapePageItems(page);
+
+        subcategories.push({ [subcategory]: items });
 
         await page.goBack();
         await page.waitForSelector('.addRow', { visible: true });
     }
+
+    return { [category]: subcategories };
 }
 
 (async () => {
@@ -74,9 +79,14 @@ async function scrapeAccordionCategory(page, accordionCategory) {
 
     const accordionCategories = await page.$$('.noMobile > cgw-category-list > mat-accordion > mat-expansion-panel > div > div > mat-accordion > mat-expansion-panel');
 
+    const data = [];
+
     for (const accordionCategory of accordionCategories) {
-        await scrapeAccordionCategory(page, accordionCategory);
+        const categoryData = await scrapeAccordionCategory(page, accordionCategory);
+        data.push(categoryData);
     }
 
-    // await browser.close();
+    console.log(JSON.stringify(data, null, 2)); // Convert to JSON for better formatting
+
+    await browser.close();
 })();
