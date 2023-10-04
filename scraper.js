@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs/promises';
 
 // Function to click on a span inside accordionCategories
 async function clickSpan(page, accordionCategory, index) {
@@ -19,7 +20,9 @@ async function scrapeItem(page, itemHandle) {
     }
 
     try {
-        price = await itemHandle.$eval(".contenedor-price > h1 > span", el => parseFloat(el.textContent.replace(/[^\d.-]/g, '')));
+        price = await itemHandle.$eval(".contenedor-price > h1 > span", el => el.textContent.replace(/[^\d.-]/g, '').replace('.', ''));
+        //convert price into a number\]
+        price = parseInt(price);
     } catch (e) {
         console.log("Error getting item price:", e.message);
     }
@@ -86,7 +89,12 @@ async function scrapeAccordionCategory(page, accordionCategory) {
         data.push(categoryData);
     }
 
-    console.log(JSON.stringify(data, null, 2)); // Convert to JSON for better formatting
+        const jsonData = JSON.stringify(data, null, 2); // Convert to JSON for better formatting
 
-    await browser.close();
+        // Save data to a JSON file
+        await fs.writeFile('output.json', jsonData, 'utf-8');
+
+        console.log('Data saved to output.json');
+
+        await browser.close();
 })();
