@@ -23,7 +23,6 @@ import puppeteer from 'puppeteer';
             const spans = Array.from(el.querySelectorAll("div > div > p > span"));
             return spans.length;
         }, accordionCategories[i]);
-        console.log(spanSize);
 
         for (let j = 0; j < spanSize; j++) {
             await page.evaluate((el, index) => {
